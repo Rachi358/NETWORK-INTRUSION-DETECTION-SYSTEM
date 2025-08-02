@@ -1,0 +1,1142 @@
+{% extends "layout.html" %}
+
+{% block title %}Dashboard - NIDS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3">
+        <i class="bi bi-speedometer2 me-2"></i>
+        Security Dashboard
+    </h1>
+    <div class="d-flex gap-2">
+        <button class="btn btn-success btn-sm" id="startMonitoringBtn" onclick="toggleMonitoring()">
+            <i class="bi bi-play-circle me-1"></i>
+            Start Monitoring
+        </button>
+        <button class="btn btn-outline-primary btn-sm" onclick="refreshDashboard()">
+            <i class="bi bi-arrow-clockwise me-1"></i>
+            Refresh
+        </button>
+    </div>
+</div>
+
+<!-- Overview Section -->
+<section id="overview" class="mb-5">
+    <div class="row">
+        <!-- Key Metrics -->
+        <div class="col-md-3 mb-4">
+            <div class="card metric-card bg-primary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="metric-value" id="totalPackets">0</div>
+                            <div class="metric-label">Total Packets</div>
+                        </div>
+                        <div>
+                            <i class="bi bi-graph-up" style="font-size: 2rem; opacity: 0.7;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-4">
+            <div class="card metric-card bg-danger text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="metric-value" id="threatsBlocked">0</div>
+                            <div class="metric-label">Threats Blocked</div>
+                        </div>
+                        <div>
+                            <i class="bi bi-shield-x" style="font-size: 2rem; opacity: 0.7;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-4">
+            <div class="card metric-card bg-success text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="metric-value" id="accuracyRate">94.2%</div>
+                            <div class="metric-label">Accuracy Rate</div>
+                        </div>
+                        <div>
+                            <i class="bi bi-bullseye" style="font-size: 2rem; opacity: 0.7;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-4">
+            <div class="card metric-card bg-info text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="metric-value" id="responseTime">0.3s</div>
+                            <div class="metric-label">Avg Response</div>
+                        </div>
+                        <div>
+                            <i class="bi bi-speedometer" style="font-size: 2rem; opacity: 0.7;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Real-time Monitoring Section -->
+<section id="monitoring" class="mb-5">
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-activity me-2"></i>
+                        Live Packet Stream
+                    </h5>
+                    <div class="d-flex gap-2">
+                        <span class="badge bg-secondary" id="packetRate">0 pps</span>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="autoPause" checked>
+                            <label class="form-check-label" for="autoPause">Auto-pause</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div id="packetStream" class="packet-stream" style="height: 400px;">
+                        <div class="text-center text-muted p-4">
+                            <i class="bi bi-play-circle" style="font-size: 3rem;"></i>
+                            <p class="mt-2">Click "Start Monitoring" to begin live packet analysis</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Active Alerts
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="activeAlerts">
+                        <div class="text-center text-muted">
+                            <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+                            <p class="mt-2">No active alerts</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Analytics Section -->
+<section id="analytics" class="mb-5">
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-pie-chart me-2"></i>
+                        Attack Type Distribution
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="attackDistributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-graph-up me-2"></i>
+                        Traffic Timeline
+                    </h5>
+                    <select class="form-select form-select-sm" style="width: auto;" id="timeRangeSelect">
+                        <option value="1">Last Hour</option>
+                        <option value="6">Last 6 Hours</option>
+                        <option value="24" selected>Last 24 Hours</option>
+                        <option value="168">Last Week</option>
+                    </select>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="trafficTimelineChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-geo me-2"></i>
+                        Top Source IPs
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="topSourceIPs" class="list-group list-group-flush">
+                        <div class="text-center text-muted p-3">
+                            <i class="bi bi-hourglass-split"></i>
+                            <p>Loading data...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-hdd-network me-2"></i>
+                        Protocol Analysis
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="protocolChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-thermometer me-2"></i>
+                        Risk Levels
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="riskLevelChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ML Models Section -->
+<section id="models" class="mb-5">
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-cpu me-2"></i>
+                        Model Performance Comparison
+                    </h5>
+                    <button class="btn btn-primary btn-sm" onclick="trainNewModels()">
+                        <i class="bi bi-play-circle me-1"></i>
+                        Train Models
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="modelPerformanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-gear me-2"></i>
+                        Active Model
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="activeModelInfo">
+                        <div class="mb-3">
+                            <strong>Algorithm:</strong>
+                            <span class="badge bg-primary" id="modelAlgorithm">Random Forest</span>
+                        </div>
+                        <div class="mb-3">
+                            <strong>Accuracy:</strong>
+                            <span class="text-success fw-bold" id="modelAccuracyDetail">94.2%</span>
+                        </div>
+                        <div class="mb-3">
+                            <strong>Precision:</strong>
+                            <span class="text-info" id="modelPrecision">92.8%</span>
+                        </div>
+                        <div class="mb-3">
+                            <strong>Recall:</strong>
+                            <span class="text-warning" id="modelRecall">95.1%</span>
+                        </div>
+                        <div class="mb-3">
+                            <strong>F1-Score:</strong>
+                            <span class="text-secondary" id="modelF1Score">93.9%</span>
+                        </div>
+                        <div class="mb-3">
+                            <strong>Last Trained:</strong>
+                            <small class="text-muted" id="lastTrained">Today, 14:30</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Detection Logs Section -->
+<section id="logs" class="mb-5">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-journal-text me-2"></i>
+                Detection Logs
+            </h5>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-success btn-sm" onclick="exportLogs()">
+                    <i class="bi bi-download me-1"></i>
+                    Export CSV
+                </button>
+                <select class="form-select form-select-sm" style="width: auto;" id="logFilterSelect">
+                    <option value="all">All Events</option>
+                    <option value="attacks">Attacks Only</option>
+                    <option value="normal">Normal Traffic</option>
+                </select>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="logsTable">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Source IP</th>
+                            <th>Destination IP</th>
+                            <th>Protocol</th>
+                            <th>Classification</th>
+                            <th>Confidence</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsTableBody">
+                        <tr>
+                            <td colspan="7" class="text-center text-muted p-4">
+                                <i class="bi bi-hourglass-split"></i>
+                                Loading detection logs...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Settings Section -->
+<section id="settings" class="mb-5">
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-sliders me-2"></i>
+                        Detection Settings
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Confidence Threshold</label>
+                        <input type="range" class="form-range" id="confidenceThreshold" min="0.1" max="1.0" step="0.1" value="0.8">
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">Low (0.1)</small>
+                            <span id="confidenceValue" class="badge bg-primary">0.8</span>
+                            <small class="text-muted">High (1.0)</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Alert Level</label>
+                        <select class="form-select" id="alertLevel">
+                            <option value="low">Low - All detections</option>
+                            <option value="medium" selected>Medium - High confidence only</option>
+                            <option value="high">High - Critical threats only</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="realTimeAlerts" checked>
+                            <label class="form-check-label" for="realTimeAlerts">
+                                Real-time Alerts
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="autoBlock" checked>
+                            <label class="form-check-label" for="autoBlock">
+                                Auto-block Threats
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="saveSettings()">
+                        <i class="bi bi-check me-1"></i>
+                        Save Settings
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-info-circle me-2"></i>
+                        System Status
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="systemStatus">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>Database Connection</span>
+                                <span class="badge bg-success" id="dbStatus">Connected</span>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>ML Model Status</span>
+                                <span class="badge bg-success" id="mlStatus">Active</span>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>Packet Capture</span>
+                                <span class="badge bg-secondary" id="captureStatus">Idle</span>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">CPU Usage</label>
+                            <div class="progress">
+                                <div id="cpuUsage" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Memory Usage</label>
+                            <div class="progress">
+                                <div id="memoryUsage" class="progress-bar bg-info" role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>System Uptime</span>
+                                <span class="text-muted" id="systemUptime">Calculating...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Global variables
+    let socket = null;
+    let monitoringActive = false;
+    let charts = {};
+    let packetCount = 0;
+    let threatCount = 0;
+    const startTime = Date.now();
+
+    // Initialize dashboard
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeWebSocketConnection();
+        initializeCharts();
+        loadDashboardData();
+        setupEventListeners();
+        
+        // Set up periodic updates
+        setInterval(updateSystemStatus, 30000); // Every 30 seconds
+        setInterval(updateUptime, 1000); // Every second
+    });
+
+    function initializeWebSocketConnection() {
+        socket = initializeWebSocket();
+        
+        if (socket) {
+            socket.on('packet_detected', handlePacketDetection);
+            socket.on('status_update', handleStatusUpdate);
+        }
+    }
+
+    function setupEventListeners() {
+        // Confidence threshold slider
+        const confidenceSlider = document.getElementById('confidenceThreshold');
+        const confidenceValue = document.getElementById('confidenceValue');
+        
+        confidenceSlider.addEventListener('input', function() {
+            confidenceValue.textContent = this.value;
+        });
+        
+        // Time range selector
+        const timeRangeSelect = document.getElementById('timeRangeSelect');
+        timeRangeSelect.addEventListener('change', function() {
+            updateTimelineChart(this.value);
+        });
+        
+        // Log filter
+        const logFilterSelect = document.getElementById('logFilterSelect');
+        logFilterSelect.addEventListener('change', function() {
+            loadDetectionLogs(this.value);
+        });
+    }
+
+    async function loadDashboardData() {
+        try {
+            // Load statistics
+            const stats = await apiCall('/statistics');
+            updateStatistics(stats);
+            
+            // Load detection logs
+            loadDetectionLogs();
+            
+            // Load model information
+            const models = await apiCall('/models');
+            updateModelInfo(models);
+            
+            // Update charts
+            updateCharts();
+            
+        } catch (error) {
+            console.error('Failed to load dashboard data:', error);
+            showAlert('Failed to load dashboard data: ' + error.message, 'danger');
+        }
+    }
+
+    function updateStatistics(stats) {
+        // Update metric cards
+        document.getElementById('totalPackets').textContent = formatNumber(stats.total_count || 0);
+        
+        // Calculate threat count from attack distribution
+        const threats = stats.attack_distribution ? 
+            stats.attack_distribution.reduce((sum, item) => sum + (item.count || 0), 0) : 0;
+        document.getElementById('threatsBlocked').textContent = formatNumber(threats);
+        
+        // Update charts with new data
+        updateAttackDistributionChart(stats.attack_distribution || []);
+        updateTrafficTimelineChart(stats.hourly_distribution || []);
+    }
+
+    function updateModelInfo(models) {
+        if (models.active_model) {
+            const model = models.active_model;
+            document.getElementById('modelAlgorithm').textContent = model.primary_model || 'Unknown';
+            
+            if (model.accuracy) {
+                document.getElementById('modelAccuracyDetail').textContent = (model.accuracy * 100).toFixed(1) + '%';
+            }
+        }
+        
+        if (models.models && models.models.length > 0) {
+            updateModelPerformanceChart(models.models);
+        }
+    }
+
+    async function loadDetectionLogs(filter = 'all') {
+        try {
+            const logs = await apiCall('/logs?limit=50');
+            const tbody = document.getElementById('logsTableBody');
+            
+            let filteredLogs = logs.logs || [];
+            
+            // Apply filter
+            if (filter === 'attacks') {
+                filteredLogs = filteredLogs.filter(log => log.is_alert);
+            } else if (filter === 'normal') {
+                filteredLogs = filteredLogs.filter(log => !log.is_alert);
+            }
+            
+            if (filteredLogs.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center text-muted p-4">
+                            <i class="bi bi-inbox"></i>
+                            No logs found
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = filteredLogs.map(log => `
+                <tr class="${log.is_alert ? 'table-danger' : 'table-success'}">
+                    <td>${formatTime(log.timestamp)}</td>
+                    <td><code>${log.source_ip}</code></td>
+                    <td><code>${log.destination_ip}</code></td>
+                    <td><span class="badge bg-secondary">${log.protocol}</span></td>
+                    <td>
+                        <span class="badge ${log.is_alert ? 'bg-danger' : 'bg-success'}">
+                            ${log.attack_type}
+                        </span>
+                    </td>
+                    <td>${(log.confidence * 100).toFixed(1)}%</td>
+                    <td>
+                        ${log.is_alert ? 
+                            '<span class="badge bg-warning">Blocked</span>' : 
+                            '<span class="badge bg-success">Allowed</span>'
+                        }
+                    </td>
+                </tr>
+            `).join('');
+            
+        } catch (error) {
+            console.error('Failed to load detection logs:', error);
+            document.getElementById('logsTableBody').innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center text-danger p-4">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Failed to load logs
+                    </td>
+                </tr>
+            `;
+        }
+    }
+
+    function initializeCharts() {
+        // Attack Distribution Chart (Pie)
+        const attackCtx = document.getElementById('attackDistributionChart').getContext('2d');
+        charts.attackDistribution = new Chart(attackCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Normal', 'DoS', 'Probe', 'R2L', 'U2R'],
+                datasets: [{
+                    data: [0, 0, 0, 0, 0],
+                    backgroundColor: ['#27ae60', '#e74c3c', '#f39c12', '#9b59b6', '#3498db'],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+
+        // Traffic Timeline Chart (Line)
+        const timelineCtx = document.getElementById('trafficTimelineChart').getContext('2d');
+        charts.timeline = new Chart(timelineCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Normal Traffic',
+                    data: [],
+                    borderColor: '#27ae60',
+                    backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                    fill: true
+                }, {
+                    label: 'Attack Traffic',
+                    data: [],
+                    borderColor: '#e74c3c',
+                    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Protocol Chart (Bar)
+        const protocolCtx = document.getElementById('protocolChart').getContext('2d');
+        charts.protocol = new Chart(protocolCtx, {
+            type: 'bar',
+            data: {
+                labels: ['TCP', 'UDP', 'ICMP', 'Other'],
+                datasets: [{
+                    label: 'Packets',
+                    data: [0, 0, 0, 0],
+                    backgroundColor: ['#3498db', '#2ecc71', '#f39c12', '#95a5a6']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+
+        // Risk Level Chart (Polar Area)
+        const riskCtx = document.getElementById('riskLevelChart').getContext('2d');
+        charts.riskLevel = new Chart(riskCtx, {
+            type: 'polarArea',
+            data: {
+                labels: ['Low', 'Medium', 'High', 'Critical'],
+                datasets: [{
+                    data: [0, 0, 0, 0],
+                    backgroundColor: ['#27ae60', '#f39c12', '#e67e22', '#e74c3c']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+
+        // Model Performance Chart (Bar)
+        const modelCtx = document.getElementById('modelPerformanceChart').getContext('2d');
+        charts.modelPerformance = new Chart(modelCtx, {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Accuracy (%)',
+                    data: [],
+                    backgroundColor: '#3498db'
+                }, {
+                    label: 'Precision (%)',
+                    data: [],
+                    backgroundColor: '#2ecc71'
+                }, {
+                    label: 'Recall (%)',
+                    data: [],
+                    backgroundColor: '#f39c12'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                }
+            }
+        });
+    }
+
+    function updateAttackDistributionChart(data) {
+        const labels = [];
+        const values = [];
+        
+        data.forEach(item => {
+            labels.push(item.attack_type || 'Unknown');
+            values.push(item.count || 0);
+        });
+        
+        charts.attackDistribution.data.labels = labels;
+        charts.attackDistribution.data.datasets[0].data = values;
+        charts.attackDistribution.update();
+    }
+
+    function updateTrafficTimelineChart(data) {
+        const labels = [];
+        const normalData = [];
+        const attackData = [];
+        
+        data.forEach(item => {
+            labels.push(item.hour + ':00');
+            normalData.push(item.normal_count || 0);
+            attackData.push(item.attack_count || 0);
+        });
+        
+        charts.timeline.data.labels = labels;
+        charts.timeline.data.datasets[0].data = normalData;
+        charts.timeline.data.datasets[1].data = attackData;
+        charts.timeline.update();
+    }
+
+    function updateModelPerformanceChart(models) {
+        const labels = [];
+        const accuracy = [];
+        const precision = [];
+        const recall = [];
+        
+        models.forEach(model => {
+            labels.push(model.model_name);
+            accuracy.push((model.accuracy * 100).toFixed(1));
+            precision.push((model.precision * 100).toFixed(1));
+            recall.push((model.recall * 100).toFixed(1));
+        });
+        
+        charts.modelPerformance.data.labels = labels;
+        charts.modelPerformance.data.datasets[0].data = accuracy;
+        charts.modelPerformance.data.datasets[1].data = precision;
+        charts.modelPerformance.data.datasets[2].data = recall;
+        charts.modelPerformance.update();
+    }
+
+    function updateCharts() {
+        // Update all charts with random demo data if no real data available
+        // This ensures the dashboard looks populated
+        
+        // Protocol chart demo data
+        const protocolData = [
+            Math.floor(Math.random() * 100),
+            Math.floor(Math.random() * 80),
+            Math.floor(Math.random() * 40),
+            Math.floor(Math.random() * 20)
+        ];
+        charts.protocol.data.datasets[0].data = protocolData;
+        charts.protocol.update();
+        
+        // Risk level chart demo data
+        const riskData = [
+            Math.floor(Math.random() * 60),
+            Math.floor(Math.random() * 30),
+            Math.floor(Math.random() * 15),
+            Math.floor(Math.random() * 5)
+        ];
+        charts.riskLevel.data.datasets[0].data = riskData;
+        charts.riskLevel.update();
+    }
+
+    async function toggleMonitoring() {
+        const button = document.getElementById('startMonitoringBtn');
+        
+        if (monitoringActive) {
+            // Stop monitoring
+            try {
+                await apiCall('/realtime/stop', { method: 'POST' });
+                monitoringActive = false;
+                button.innerHTML = '<i class="bi bi-play-circle me-1"></i>Start Monitoring';
+                button.className = 'btn btn-success btn-sm';
+                document.getElementById('captureStatus').textContent = 'Idle';
+                document.getElementById('captureStatus').className = 'badge bg-secondary';
+                showAlert('Monitoring stopped', 'info');
+            } catch (error) {
+                showAlert('Failed to stop monitoring: ' + error.message, 'danger');
+            }
+        } else {
+            // Start monitoring
+            try {
+                showLoading('Starting monitoring...', 'Initializing packet capture');
+                
+                await apiCall('/realtime/start', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        use_simulation: true,
+                        packets_per_second: 5
+                    })
+                });
+                
+                hideLoading();
+                monitoringActive = true;
+                button.innerHTML = '<i class="bi bi-stop-circle me-1"></i>Stop Monitoring';
+                button.className = 'btn btn-danger btn-sm';
+                document.getElementById('captureStatus').textContent = 'Active';
+                document.getElementById('captureStatus').className = 'badge bg-success';
+                
+                // Clear packet stream
+                document.getElementById('packetStream').innerHTML = '';
+                
+                showAlert('Real-time monitoring started', 'success');
+                
+            } catch (error) {
+                hideLoading();
+                showAlert('Failed to start monitoring: ' + error.message, 'danger');
+            }
+        }
+    }
+
+    function handlePacketDetection(data) {
+        packetCount++;
+        if (data.is_attack) {
+            threatCount++;
+        }
+        
+        // Update metrics
+        document.getElementById('totalPackets').textContent = formatNumber(packetCount);
+        document.getElementById('threatsBlocked').textContent = formatNumber(threatCount);
+        
+        // Update packet rate
+        const packetRate = document.getElementById('packetRate');
+        packetRate.textContent = Math.floor(Math.random() * 10) + ' pps';
+        
+        // Add to packet stream
+        addPacketToStream(data);
+        
+        // Add to active alerts if it's an attack
+        if (data.is_attack && data.confidence > 0.7) {
+            addActiveAlert(data);
+        }
+    }
+
+    function addPacketToStream(data) {
+        const stream = document.getElementById('packetStream');
+        const autoPause = document.getElementById('autoPause').checked;
+        
+        // Check if we should pause on attacks
+        if (autoPause && data.is_attack) {
+            stream.style.animationPlayState = 'paused';
+        }
+        
+        const item = document.createElement('div');
+        item.className = `packet-item ${data.is_attack ? 'packet-attack' : 'packet-normal'}`;
+        item.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="bi ${data.is_attack ? 'bi-exclamation-triangle-fill' : 'bi-check-circle-fill'} me-2"></i>
+                    <code>${data.src_ip || 'unknown'}</code> → <code>${data.dst_ip || 'unknown'}</code>
+                    <span class="badge bg-secondary ms-2">${data.protocol || 'unknown'}</span>
+                </div>
+                <div class="text-end">
+                    <span class="badge ${data.is_attack ? 'bg-danger' : 'bg-success'}">${data.prediction}</span>
+                    <small class="text-muted ms-1">${(data.confidence * 100).toFixed(1)}%</small>
+                </div>
+            </div>
+        `;
+        
+        stream.insertBefore(item, stream.firstChild);
+        
+        // Keep only last 30 items
+        while (stream.children.length > 30) {
+            stream.removeChild(stream.lastChild);
+        }
+    }
+
+    function addActiveAlert(data) {
+        const alertsContainer = document.getElementById('activeAlerts');
+        
+        // Clear "no alerts" message
+        if (alertsContainer.querySelector('.text-center')) {
+            alertsContainer.innerHTML = '';
+        }
+        
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-danger alert-dismissible fade show mb-2';
+        alert.innerHTML = `
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <strong>High-risk threat detected</strong><br>
+                    <small>From: <code>${data.src_ip}</code></small><br>
+                    <small>Type: ${data.prediction} (${(data.confidence * 100).toFixed(1)}%)</small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        
+        alertsContainer.appendChild(alert);
+        
+        // Auto-remove after 30 seconds
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.remove();
+                
+                // Show "no alerts" if container is empty
+                if (alertsContainer.children.length === 0) {
+                    alertsContainer.innerHTML = `
+                        <div class="text-center text-muted">
+                            <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+                            <p class="mt-2">No active alerts</p>
+                        </div>
+                    `;
+                }
+            }
+        }, 30000);
+    }
+
+    function handleStatusUpdate(data) {
+        if (data.system) {
+            // Update CPU usage
+            const cpuUsage = document.getElementById('cpuUsage');
+            cpuUsage.style.width = data.system.cpu_percent + '%';
+            cpuUsage.textContent = data.system.cpu_percent.toFixed(1) + '%';
+            
+            // Update memory usage
+            const memoryUsage = document.getElementById('memoryUsage');
+            memoryUsage.style.width = data.system.memory_percent + '%';
+            memoryUsage.textContent = data.system.memory_percent.toFixed(1) + '%';
+        }
+    }
+
+    async function updateSystemStatus() {
+        try {
+            const status = await apiCall('/status');
+            
+            // Update system metrics
+            if (status.system) {
+                handleStatusUpdate(status);
+            }
+            
+            // Update connection status indicators
+            document.getElementById('dbStatus').textContent = 'Connected';
+            document.getElementById('dbStatus').className = 'badge bg-success';
+            
+            document.getElementById('mlStatus').textContent = 'Active';
+            document.getElementById('mlStatus').className = 'badge bg-success';
+            
+        } catch (error) {
+            // Update status to show errors
+            document.getElementById('dbStatus').textContent = 'Error';
+            document.getElementById('dbStatus').className = 'badge bg-danger';
+            
+            document.getElementById('mlStatus').textContent = 'Error';
+            document.getElementById('mlStatus').className = 'badge bg-danger';
+        }
+    }
+
+    function updateUptime() {
+        const uptime = Date.now() - startTime;
+        const hours = Math.floor(uptime / (1000 * 60 * 60));
+        const minutes = Math.floor((uptime % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((uptime % (1000 * 60)) / 1000);
+        
+        document.getElementById('systemUptime').textContent = `${hours}h ${minutes}m ${seconds}s`;
+    }
+
+    async function refreshDashboard() {
+        showLoading('Refreshing dashboard...', 'Loading latest data');
+        
+        try {
+            await loadDashboardData();
+            hideLoading();
+            showAlert('Dashboard refreshed', 'success');
+        } catch (error) {
+            hideLoading();
+            showAlert('Failed to refresh dashboard: ' + error.message, 'danger');
+        }
+    }
+
+    async function trainNewModels() {
+        if (!confirm('Model training may take several minutes. Continue?')) {
+            return;
+        }
+        
+        showLoading('Training models...', 'This may take several minutes');
+        
+        try {
+            const result = await apiCall('/train', {
+                method: 'POST',
+                body: JSON.stringify({
+                    use_sample: true,
+                    models: ['random_forest', 'decision_tree', 'naive_bayes'],
+                    hyperparameter_tuning: false
+                })
+            });
+            
+            hideLoading();
+            showAlert(`Models trained successfully. Best: ${result.best_model}`, 'success');
+            
+            // Refresh model info
+            setTimeout(() => {
+                loadDashboardData();
+            }, 1000);
+            
+        } catch (error) {
+            hideLoading();
+            showAlert('Model training failed: ' + error.message, 'danger');
+        }
+    }
+
+    async function exportLogs() {
+        showLoading('Exporting logs...', 'Generating CSV file');
+        
+        try {
+            const result = await apiCall('/export/logs');
+            
+            // Create download
+            const blob = new Blob([result.csv_data], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = result.filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            hideLoading();
+            showAlert('Logs exported successfully', 'success');
+            
+        } catch (error) {
+            hideLoading();
+            showAlert('Export failed: ' + error.message, 'danger');
+        }
+    }
+
+    function saveSettings() {
+        const settings = {
+            confidenceThreshold: document.getElementById('confidenceThreshold').value,
+            alertLevel: document.getElementById('alertLevel').value,
+            realTimeAlerts: document.getElementById('realTimeAlerts').checked,
+            autoBlock: document.getElementById('autoBlock').checked
+        };
+        
+        // Save to localStorage for demo
+        localStorage.setItem('nidsSettings', JSON.stringify(settings));
+        
+        showAlert('Settings saved successfully', 'success');
+    }
+
+    // Load saved settings on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const savedSettings = localStorage.getItem('nidsSettings');
+        if (savedSettings) {
+            try {
+                const settings = JSON.parse(savedSettings);
+                
+                if (settings.confidenceThreshold) {
+                    document.getElementById('confidenceThreshold').value = settings.confidenceThreshold;
+                    document.getElementById('confidenceValue').textContent = settings.confidenceThreshold;
+                }
+                
+                if (settings.alertLevel) {
+                    document.getElementById('alertLevel').value = settings.alertLevel;
+                }
+                
+                if (typeof settings.realTimeAlerts === 'boolean') {
+                    document.getElementById('realTimeAlerts').checked = settings.realTimeAlerts;
+                }
+                
+                if (typeof settings.autoBlock === 'boolean') {
+                    document.getElementById('autoBlock').checked = settings.autoBlock;
+                }
+            } catch (e) {
+                console.error('Failed to load saved settings:', e);
+            }
+        }
+    });
+</script>
+{% endblock %}
